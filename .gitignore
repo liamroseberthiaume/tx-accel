@@ -1,0 +1,46 @@
+# =====================================
+# tx-accel Git Ignore
+# =====================================
+
+# Python virtual environments
+.venv/
+venv/
+
+# Python cache and testing files
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Simulation executables
+*_sim
+*.vvp
+
+# Simulation waveforms
+*.vcd
+*.fst
+*.ghw
+
+# Cocotb simulation files
+sim_build/
+results.xml
+
+# Verilator generated files
+obj_dir/
+
+# Build outputs
+build/
+dist/
+
+# Editor configuration
+.vscode/
+.idea/
+
+# Operating system files
+.DS_Store
+Thumbs.db
+
+# Local environment secrets
+.env
+.env.*
