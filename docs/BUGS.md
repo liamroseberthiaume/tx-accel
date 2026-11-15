@@ -129,3 +129,153 @@ For subsequent modules:
 3. Run lint checks before accepting an implementation.
 4. Record unexpected failures and their fixes in this document.
 5. Commit verified, working versions to GitHub before major design changes.
+
+
+---
+
+## BUG-003: Icarus Verilog Pipeline Compilation Compatibility
+
+**Date:** November 14, 2026  
+**Milestone:** M1, Systolic Array  
+**Status:** Resolved for the tested 2x2 configuration
+
+### Problem
+
+When compiling the systolic array, Icarus Verilog reported:
+
+`Unable to assign words of unresolved wire array.`
+
+After modifying the code, compilation succeeded but repeatedly produced:
+
+`sorry: constant selects in always_* processes are not currently supported (all bits will be included).`
+
+### Root Cause
+
+The initial implementation mixed continuous assignments
+and clocked procedural assignments within unpacked
+pipeline arrays, which Icarus Verilog could not elaborate.
+
+Changing the stage-zero assignments to `always_comb`
+resolved the elaboration errors, but exposed an Icarus
+Verilog limitation involving constant bit selections.
+
+### Debugging Process
+
+1. Compiled the parameterized systolic array.
+2. Identified 10 elaboration errors.
+3. Replaced the stage-zero continuous assignments
+   with procedural combinational assignments.
+4. Confirmed the elaboration errors disappeared.
+5. Investigated the remaining constant-select diagnostics.
+6. Located the affected blocks at lines 66 and 125.
+7. Replaced `always_comb` with `always @*`.
+
+### Resolution
+
+Used `always @*` for the combinational stage-zero
+assignments in both A and B input pipelines.
+
+This eliminated the Icarus Verilog diagnostics
+without changing the intended pipeline delays.
+
+### Verification
+
+- Icarus Verilog compilation: PASSED
+- Constant-select diagnostics: Eliminated
+- 2x2 matrix multiplication: PASSED
+- Expected output: [[19, 22], [43, 50]]
+- Completion timing: PASSED
+- Larger configurations: Require regression after this change
+
+### Lessons Learned
+
+- Simulator compatibility can influence RTL coding style.
+- Successful compilation and correct functionality are
+  separate verification requirements.
+- Small RTL changes require regression testing.
+- Compiler diagnostics should be investigated rather
+  than automatically ignored.
+
+
+---
+
+## BUG-004: Yosys Parameterized Synthesis Assertion
+
+**Date:** November 14, 2026
+**Milestone:** M1, Systolic Array
+**Status:** Workaround verified for N=1
+
+### Problem
+
+Yosys 0.33 encountered an internal assertion failure
+when synthesizing the parameterized systolic array:
+
+ERROR: Assert `modules.count(module->name) == 0'
+failed in kernel/rtlil.cc:664.
+
+### Investigation
+
+The original synthesis command used:
+
+hierarchy -check -top systolic_array -chparam N 1
+
+This caused the internal assertion failure during
+parameterized module elaboration.
+
+The underlying cause within Yosys has not been
+confirmed.
+
+### Resolution / Workaround
+
+Changed parameter configuration to use the
+dedicated `chparam` command:
+
+chparam -set N 1 systolic_array
+
+Followed by:
+
+synth -top systolic_array
+check -assert
+stat
+
+### Verification
+
+- Yosys version: 0.33
+- N=1 synthesis: PASSED
+- N=2 synthesis: PASSED
+- N=4 synthesis: PASSED
+- N=8 synthesis: PASSED
+- Structural problems: 0 for all configurations
+- N=1 exit code: 0
+- N=8 synthesis reached End of script
+- Internal assertion avoided using `chparam`
+
+### Remaining Warnings
+
+The N=8 synthesis reported 51 unique warnings,
+111 occurrences in total.
+
+All N=8 warnings concerned converting unpacked
+SystemVerilog arrays into individual signals or
+registers.
+
+No additional warning categories were identified.
+
+These warnings are acceptable for the current
+synthesis verification.
+
+### Final Status
+
+Workaround verified for N=1, N=2, N=4, and N=8.
+
+The internal cause of the original Yosys assertion
+has not been established. No RTL changes were needed.
+
+### Lessons Learned
+
+- Parameterized RTL may expose tool compatibility issues.
+- An internal tool assertion is not proof of incorrect RTL.
+- Alternative synthesis command sequences can resolve
+  tool-specific issues.
+- Always verify synthesis success using the exit code
+  and structural checks.
