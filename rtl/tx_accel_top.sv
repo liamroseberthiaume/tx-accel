@@ -3,7 +3,8 @@ module tx_accel_top #(
     parameter int N = 2,
     parameter int DATA_WIDTH = 8,
     parameter int ACC_WIDTH = 32,
-    parameter int FIFO_DEPTH = 4
+    parameter int FIFO_DEPTH = 4,
+    parameter int OUTPUT_FIFO_DEPTH = 4
 )(
     // =====================================
     // Clock and Reset
@@ -66,6 +67,13 @@ module tx_accel_top #(
     logic [N*N*ACC_WIDTH-1:0] array_c_out;
     logic array_done;
 
+    // =====================================
+    // Controller to Output FIFO Connections
+    // =====================================
+
+    logic [N*N*ACC_WIDTH-1:0] controller_result_c;
+    logic controller_result_valid;
+    logic controller_result_ready;
 
     // =====================================
     // Input FIFO Instance
@@ -132,12 +140,39 @@ module tx_accel_top #(
         .array_c_out(array_c_out),
         .array_done(array_done),
 
-        // External result interface
-        .result_c(result_c),
-        .result_valid(result_valid),
-        .result_ready(result_ready)
+        // Controller to output FIFO
+        .result_c(controller_result_c),
+        .result_valid(controller_result_valid),
+        .result_ready(controller_result_ready)
 
     );
+
+
+    // =====================================
+    // Output FIFO Instance
+    // =====================================
+
+    output_fifo #(
+        .N(N),
+        .ACC_WIDTH(ACC_WIDTH),
+        .DEPTH(OUTPUT_FIFO_DEPTH)
+    ) u_output_fifo (
+
+        // Clock and reset
+        .clk(clk),
+        .rst_n(rst_n),
+
+        // Input from controller
+        .in_data(controller_result_c),
+        .in_valid(controller_result_valid),
+        .in_ready(controller_result_ready),
+
+        // Output to external receiver
+        .out_data(result_c),
+        .out_valid(result_valid),
+        .out_ready(result_ready)
+    );
+
 
     // =====================================
     // Systolic Array Instance

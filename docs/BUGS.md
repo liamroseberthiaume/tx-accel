@@ -309,3 +309,44 @@ Recompiled and reran the integrated 4×4 accelerator simulation. All 16 matrix e
 When adapting a testbench for a different hardware configuration, update all expected-result references, not just the primary result checker. A stale reference can cause a false test failure even when the underlying RTL is functioning correctly.
 
 **RTL Changes Required:** None.
+
+
+## BUG-006: Semicolon
+
+**Status:** Fixed  
+**Severity:** Low but frustrating 
+**File:** `tests/tb/tb_tx_accel_output_buffering.sv`
+
+### Description
+The output-buffering testbench failed to compile because
+of a missing semicolon after `$finish`.
+
+The compiler reported a syntax error at line 232,
+even though the actual mistake was on line 230.
+
+### Root Cause
+The code contained:
+
+```systemverilog
+$finish
+```
+
+Instead of:
+
+```systemverilog
+$finish;
+```
+
+### Resolution
+Added the missing semicolon and reran the simulation.
+All output-buffering tests passed.
+
+### Lessons Learned
+- Compiler errors may appear AFTER the actual mistake.
+- Always check the preceding line for missing semicolons.
+- One character can consume a completely unreasonable
+  amount of debugging time.
+
+**Hardware impact:** None  
+
+
