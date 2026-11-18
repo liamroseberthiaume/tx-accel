@@ -279,3 +279,33 @@ has not been established. No RTL changes were needed.
   tool-specific issues.
 - Always verify synthesis success using the exit code
   and structural checks.
+
+### BUG-005: Incorrect Expected Result in 4×4 Backpressure Test
+
+**Milestone:** M2, Step 2.7C  
+**File:** `tests/tb/tb_tx_accel_top_4x4.sv`  
+**Type:** Testbench verification error  
+**Status:** Resolved
+
+**Problem:**  
+The integrated 4×4 matrix multiplication successfully verified all 16 output elements, but the subsequent result backpressure test failed with `FAIL: Result not held`.
+
+**Root Cause:**  
+The 4×4 testbench was created by copying the existing 2×2 testbench. The backpressure verification still referenced the old 2×2 expected result (`EXPECTED`) instead of the newly calculated 4×4 reference result (`expected_c`).
+
+**Fix:**  
+Changed the backpressure comparison from:
+
+`result_c !== EXPECTED`
+
+to:
+
+`result_c !== expected_c`
+
+**Verification:**  
+Recompiled and reran the integrated 4×4 accelerator simulation. All 16 matrix elements passed, followed by successful result backpressure and result acceptance checks.
+
+**Lesson Learned:**  
+When adapting a testbench for a different hardware configuration, update all expected-result references, not just the primary result checker. A stale reference can cause a false test failure even when the underlying RTL is functioning correctly.
+
+**RTL Changes Required:** None.
