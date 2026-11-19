@@ -350,3 +350,143 @@ All output-buffering tests passed.
 **Hardware impact:** None  
 
 
+## BUG-007: The Case of the Doppelgänger Testbench
+
+**Status:** Fixed  
+**Severity:** Low  
+**Confusion Level:** Astronomical  
+**Time Wasted:** Far more than necessary
+
+### Description
+During matrix tiling verification, the simulator kept
+using outdated expected values despite the code being
+corrected and saved multiple times.
+
+VS Code showed the correct values, but the Ubuntu
+terminal continued showing the old ones.
+
+### Root Cause
+Two copies of the testbench existed:
+
+- `tests/tb/tb_tx_accel_tiling_4x4.sv`
+- `tests/tb_tx_accel_tiling_4x4.sv`
+
+VS Code was editing one file while Icarus Verilog
+was compiling the other.
+
+Pressing Ctrl+S worked perfectly.
+It was just saving the wrong file.
+
+### Resolution
+1. Identified the different paths using `realpath`
+   and VS Code's Copy Path feature.
+2. Opened and corrected the actual compiled file.
+3. Deleted the accidental duplicate.
+4. Reran the simulation successfully.
+
+### Lessons Learned
+- Identical filenames do not mean identical files.
+- Always verify the full path when saved changes
+  don't appear in simulation.
+- Use `realpath` and `grep` to investigate.
+- Never underestimate the chaos caused by one
+  missing directory in a file path.
+
+**Hardware impact:** None  
+**Developer sanity:** Temporarily compromised
+
+**Final Verdict:**
+The code was correct.
+The save button was innocent.
+The wrong file was the impostor.
+
+## BUG-008: The END That Never Ended
+
+**Status:** Fixed  
+**Severity:** Low  
+**Frustration Level:** High  
+**File:** `tests/tb/tb_tx_accel_tiling_4x4.sv`
+
+### Description
+During matrix tiling verification, Icarus Verilog
+reported a syntax error at line 332, near `endmodule`.
+
+The actual problem was much earlier in the file.
+
+### Root Cause
+An `if` statement began with:
+
+```systemverilog
+if (result_c !== EXPECTED) begin
+```
+
+But the corresponding `end` was missing.
+
+The compiler continued reading until it reached
+the end of the module and finally gave up.
+
+### Resolution
+Added the missing `end` after the `$fatal` statement.
+
+### Lessons Learned
+- A syntax error may be reported far from its cause.
+- Every `begin` must have a matching `end`.
+- When an error appears at `endmodule`, inspect
+  earlier blocks for missing `end` statements.
+
+**Hardware impact:** None  
+**Developer frustration:** Considerable
+
+**Final Verdict:**
+The compiler reached the end.
+Unfortunately, the code never did.
+
+## BUG-009: The Double-Dipping Tile Accumulator
+
+**Status:** Fixed  
+**Severity:** Medium  
+**File:** `tests/tb/tb_tx_accel_tiling_4x4.sv`
+
+### Description
+While adding the first partial-tile accumulation logic,
+the same code block was accidentally inserted twice.
+
+Both sections attempted to add the same accelerator
+result into the 4x4 result accumulator.
+
+### Root Cause
+Duplicate loops performed:
+
+```systemverilog
+tiled_c[r][c] = tiled_c[r][c]
+    + $signed(result_c[
+        (r*N+c)*ACC_WIDTH +: ACC_WIDTH
+    ]);
+```
+
+If executed twice, this would double-count the
+first partial tile and produce incorrect results.
+
+### Resolution
+Removed the duplicate accumulation block and
+kept one copy after the result verification.
+
+Compilation passed following the correction.
+Functional simulation still needs to be rerun.
+
+### Lessons Learned
+- Always check for duplicate code when inserting
+  new testbench logic.
+- A successful compilation does not guarantee
+  correct calculations.
+- Accumulation logic must execute exactly once
+  per intended partial result.
+
+**Hardware impact:** None  
+**Verification impact:** Potentially incorrect results
+
+**Final Verdict:**
+The accelerator calculated once.
+The testbench wanted to collect twice.
+Apparently, one correct answer wasn't enough.
+
